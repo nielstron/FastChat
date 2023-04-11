@@ -149,6 +149,7 @@ class ModelWorker:
         l_prompt = len(prompt)
         temperature = float(params.get("temperature", 1.0))
         max_new_tokens = min(int(params.get("max_new_tokens", 256)), 1024)
+        repetition_penalty = float(params.get("repetition_penalty", 100))
         stop_str = params.get("stop", None)
         seed = params.get("seed", 0)
         torch.manual_seed(seed)
@@ -174,6 +175,13 @@ class ModelWorker:
                             past_key_values=past_key_values)
                 logits = out.logits
                 past_key_values = out.past_key_values
+
+            if repetition_penalty < 1.0:
+                mangled_input_ids = torch.as_tensor([output_ids], device=self.device)
+                score = torch.gather(logits[:, -1, :], 1, mangled_input_ids)
+                score = torch.where(score < 0, score * repetition_penalty, score / repetition_penalty)
+                logits[:, -1, :].scatter_(1, mangled_input_ids, score)
+
 
             last_token_logits = logits[0][-1]
             if temperature < 1e-4:
