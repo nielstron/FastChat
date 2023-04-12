@@ -66,6 +66,7 @@ class Handler(BaseHTTPRequestHandler):
             max_content = body.get("max_content_length", 2048)
 
             n = body.get("n", 1)
+            initial_seed = body.get("seed", 0)
             headers = {"User-Agent": "fastchat Client"}
             pload = {
                 "model": model,
@@ -94,21 +95,24 @@ class Handler(BaseHTTPRequestHandler):
             # stopping_strings=body.get("stop", [begin_signal]),
 
             choices = []
-            for i in range(n):
-                pload["seed"] = i
+            step_size = 16
+            for i in range(0, n, step_size):
+                batch = min(step_size, n-i)
+                pload["seed"] = i + initial_seed
+                pload["n"] = batch
                 response = requests.post(worker_addr + "/worker_generate_stream", headers=headers,
                                          json=pload, stream=True)
-                output = ""
+                output = ["" for _ in range(batch)]
                 for chunk in response.iter_lines(chunk_size=8192, decode_unicode=False, delimiter=b"\0"):
                     if chunk:
                         data = json.loads(chunk.decode("utf-8"))
                         if data["error_code"] == 0:
-                            output = data["text"][len(prompt) + 1:].strip()
+                            output[data["choice"]] = data["text"][len(prompt) + 1:].strip()
                         else:
                             self.send_error(500, f"Error, code {data['error_code']}")
                     time.sleep(0.01)
 
-                choices.append(output)
+                choices.extend(output)
 
             response = json.dumps(
                 {
