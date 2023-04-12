@@ -151,6 +151,7 @@ class ModelWorker:
         max_new_tokens = min(int(params.get("max_new_tokens", 256)), 1024)
         stop_str = params.get("stop", None)
         seed = params.get("seed", 0)
+        top_p = params.get("top_p", -1)
         torch.manual_seed(seed)
 
         input_ids = tokenizer(prompt).input_ids
@@ -174,6 +175,20 @@ class ModelWorker:
                             past_key_values=past_key_values)
                 logits = out.logits
                 past_key_values = out.past_key_values
+
+            if top_p >= 0:
+                # mangled_input_ids = torch.as_tensor([output_ids], device=self.device)
+                scores = logits[:, -1, :]
+                sorted_logits, sorted_indices = torch.sort(scores, descending=False)
+                cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+
+                # Remove tokens with cumulative top_p above the threshold (token with 0 are kept)
+                sorted_indices_to_remove = cumulative_probs <= (1 - top_p)
+
+                # scatter sorted tensors to original indexing
+                indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+                scores = scores.masked_fill(indices_to_remove, -float("inf"))
+                logits[:, -1, :] = scores
 
             last_token_logits = logits[0][-1]
             if temperature < 1e-4:
