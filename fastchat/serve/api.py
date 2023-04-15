@@ -114,7 +114,7 @@ class Handler(BaseHTTPRequestHandler):
                         if data["error_code"] == 0:
                             output[data["choice"]] = data["text"][skip_echo_len:].strip()
                         else:
-                            self.send_error(500, f"Error, code {data['error_code']}")
+                            self.send_error(500, f"Error, code {data['error_code']} for {pload}")
                     time.sleep(0.01)
 
                 choices.extend(output)
