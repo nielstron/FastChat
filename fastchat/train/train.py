@@ -222,6 +222,7 @@ def train():
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
         cache_dir=training_args.cache_dir,
+        device_map="auto",
     )
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
@@ -230,7 +231,9 @@ def train():
         padding_side="right",
         use_fast=False,
     )
-    tokenizer.pad_token = tokenizer.unk_token
+    print(f"UNK_TOKEN: {tokenizer.unk_token}")
+    tokenizer.pad_token = "</s>"
+    tokenizer.unk_token = "</s>"
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
