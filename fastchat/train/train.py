@@ -231,9 +231,10 @@ def train():
         padding_side="right",
         use_fast=False,
     )
-    print(f"UNK_TOKEN: {tokenizer.unk_token}")
-    tokenizer.pad_token = "</s>"
-    tokenizer.unk_token = "</s>"
+    # print(f"UNK_TOKEN: {tokenizer.unk_token}")
+    # tokenizer.pad_token = "</s>"
+    # tokenizer.unk_token = "</s>"
+    tokenizer.pad_token = tokenizer.unk_token
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
